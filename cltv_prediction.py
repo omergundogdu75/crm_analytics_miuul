@@ -48,25 +48,31 @@ from lifetimes import GammaGammaFitter
 from lifetimes.plotting import plot_period_transactions
 
 pd.set_option('display.max_columns', None)
-pd.set_option('display.width', 500)
-pd.set_option('display.float_format', lambda x: '%.4f' % x)
-from sklearn.preprocessing import MinMaxScaler
+pd.set_option('display.width', 500) # sutunları göster aşağı taşmadan
+pd.set_option('display.float_format', lambda x: '%.4f' % x) # 4 ondalıklı göster
+from sklearn.preprocessing import MinMaxScaler # 0-1 yada 0-100 arasında değer gösterebiliriz.
 
 
 
-
+# modeller olasılıksal istatiksel olacağından değişkenler sonucu etkileyecektir.
+#önce aykırı değerler tespit edilip sonra bastıracağız.
+# birincisi outlier_thresholds fonsiyonudur, eşik değer belirleyeceğiz
+#çeyrekdeğerler hesaplanır
 def outlier_thresholds(dataframe, variable):
-    quartile1 = dataframe[variable].quantile(0.01)
+    quartile1 = dataframe[variable].quantile(0.01) # quantile fonk çeyreklik değer hesaplarız.
+    # küçükten büyüğe sıralanır
     quartile3 = dataframe[variable].quantile(0.99)
     interquantile_range = quartile3 - quartile1
     up_limit = quartile3 + 1.5 * interquantile_range
     low_limit = quartile1 - 1.5 * interquantile_range
     return low_limit, up_limit
 
-
+# ikincisi replace_with_thresholds fonsiyonudur
+# bir df ile variable değeri ile bir eşik değeri belirleyip
+# ilgili df de üstlimit değerinden büyük değerler var ise bunları değiştirir
 def replace_with_thresholds(dataframe, variable):
     low_limit, up_limit = outlier_thresholds(dataframe, variable)
-    # dataframe.loc[(dataframe[variable] < low_limit), variable] = low_limit
+    # dataframe.loc[(dataframe[variable] < low_limit), variable] = low_limit #eksi değer olmadığını biliyorz
     dataframe.loc[(dataframe[variable] > up_limit), variable] = up_limit
 
 
@@ -80,7 +86,7 @@ df = df_.copy()
 df.describe().T
 df.head()
 df.isnull().sum()
-
+df.shape
 #########################
 # Veri Ön İşleme
 #########################
@@ -130,8 +136,13 @@ cltv_df["T"] = cltv_df["T"] / 7
 ##############################################################
 # 2. BG-NBD Modelinin Kurulması
 ##############################################################
+#model nesnesi aracığıyla fit methodu kullanarak recency, frequency, T(müşteri yaşaı)
+# değerleri kullanarak model kurulur,
+#gama ve beta dağılımları kullanılır, ençok olabilirlik yöntemi kullanıyoruz
+bgf = BetaGeoFitter(penalizer_coef=0.001) # katsayılara uygulanacak ceza kat sayısıdır.
+#bg-nbd modeli ençok olabilirlik modeli ile beta gama parametrelerini bulmakta ve tahmin
+# yapabilmemiz için ilgili modeli oluşturur.
 
-bgf = BetaGeoFitter(penalizer_coef=0.001)
 
 bgf.fit(cltv_df['frequency'],
         cltv_df['recency'],
@@ -230,7 +241,7 @@ cltv.head()
 
 cltv = cltv.reset_index()
 
-cltv_final = cltv_df.merge(cltv, on="Customer ID", how="left")
+cltv_final = cltv_df.merge(cltv, on="Customer ID", how="left") # cltv ile cltv_df i birleştir
 cltv_final.sort_values(by="clv", ascending=False).head(10)
 
 
